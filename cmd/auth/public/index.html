@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <title>Welcome to the ATES</title>
+    <link href='./css/bootstrap.min.css' rel='stylesheet' type='text/css'>
+    <link href='./css/style.css' rel='stylesheet' type='text/css'>
+    <link rel="icon" href="./img/favicon.ico">
+</head>
+<body class="text-center">
+<form name="signin" class="form-signin" method="POST">
+    <img class="mb-4 rounded-circle" src="./img/popug.png" alt="" width="75" height="75">
+    <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
+    <label for="inputEmail" class="sr-only">Email address</label>
+    <input name="email" type="email" id="inputEmail" class="form-control" placeholder="Email address" required
+           autofocus>
+    <label for="inputPassword" class="sr-only">Password</label>
+    <input name="password" type="password" id="inputPassword" class="form-control" placeholder="Password" required>
+
+    <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+
+    <div class="mt-3 alert d-none" role="alert"></div>
+
+    <p class="mt-5 mb-3 text-muted">UberPopug Inc &copy; 2022</p>
+</form>
+
+<script>
+    let params = window
+        .location
+        .search
+        .replace('?', '')
+        .split('&')
+        .reduce(
+            function (p, e) {
+                var a = e.split('=');
+                p[decodeURIComponent(a[0])] = decodeURIComponent(a[1]);
+                return p;
+            },
+            {}
+        );
+
+    document.querySelector(".btn").addEventListener("click", function (event) {
+        send(event);
+    }, false);
+
+    function send(event) {
+        let formData = new FormData(document.forms.signin);
+        let redirectUrl = params["redirectUrl"];
+        if (!/^https?:\/\//i.test(redirectUrl)) {
+            redirectUrl = 'http://' + redirectUrl;
+        }
+
+        let r = new XMLHttpRequest();
+        r.open("POST", "/signin");
+        r.send(formData);
+
+        r.onload = function () {
+            let alertBox = document.querySelector(".alert");
+            alertBox.classList.remove("d-none");
+
+            let jr = JSON.parse(r.responseText);
+            alertBox.textContent = jr.msg;
+
+            if (r.status !== 200) {
+                // alert("Error: " + jr.msg);
+                alertBox.classList.add("alert-danger");
+                return;
+            }
+
+            // alert(jr.msg)
+            if (alertBox.classList.contains("alert-danger")) {
+                alertBox.classList.remove("alert-danger");
+            }
+            alertBox.classList.add("alert-success");
+
+            setTimeout(() => {
+                window.location.href = redirectUrl
+            }, 1500)
+        };
+        event.preventDefault();
+    }
+</script>
+
+</body>
+</html>
