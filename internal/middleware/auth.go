@@ -1,8 +1,10 @@
 package middleware
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/aksioto/awesome-task-exchange-system/internal/helper"
+	"github.com/aksioto/awesome-task-exchange-system/internal/model"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -19,15 +21,12 @@ func NewAuthMiddleware() gin.HandlerFunc {
 		cookie, err := c.Cookie("token")
 		if err != nil {
 			if err == http.ErrNoCookie {
-				c.Redirect(http.StatusFound, authUrl)
-				c.Abort()
-				//c.JSON(http.StatusBadRequest, gin.H{
-				//	"msg": "Auth. Missing cookie with token.",
-				//})
+				log.Println(err.Error())
+				redirect(c, authUrl)
 				return
 			}
 			c.JSON(http.StatusBadRequest, gin.H{
-				"msg": "Auth. Bad request.",
+				"msg": "Auth. Bad request." + err.Error(),
 			})
 			return
 		}
@@ -37,14 +36,27 @@ func NewAuthMiddleware() gin.HandlerFunc {
 		}
 		claims, err := makeRequest(tokenUrl, header)
 		if err != nil {
-			log.Printf("Redirecting to %s", authUrl)
-			c.Redirect(http.StatusFound, authUrl)
+			log.Println("token validation failed")
+			redirect(c, authUrl)
 			return
 		}
 
-		c.Set("claims", claims)
+		rm := &model.ResponseMessage{}
+		err = json.Unmarshal([]byte(claims), &rm)
+		if err != nil {
+			log.Println("parsing claims failed")
+			return
+		}
+
+		c.Set("userdata", rm)
 		c.Next()
 	}
+}
+
+func redirect(c *gin.Context, url string) {
+	log.Printf("Redirecting to %s", url)
+	c.Redirect(http.StatusFound, url)
+	c.Abort()
 }
 
 func makeRequest(url string, header http.Header) (string, error) {
@@ -61,8 +73,9 @@ func makeRequest(url string, header http.Header) (string, error) {
 		return "", err
 	}
 
-	if res.StatusCode == http.StatusUnauthorized {
+	if res.StatusCode != http.StatusOK {
 		return "", errors.New(fmt.Sprintf("Error! Status code %o", res.StatusCode))
 	}
+
 	return string(body), nil
 }

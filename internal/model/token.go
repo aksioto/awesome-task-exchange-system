@@ -12,7 +12,7 @@ type Claims struct {
 }
 
 type ResponseMessage struct {
-	Msg    string `json:"msg,omitempty"`
-	Code   int    `json:"code,omitempty"`
-	Claims Claims `json:"claims,omitempty"`
+	Msg    string  `json:"msg,omitempty"`
+	Code   int     `json:"code,omitempty"`
+	Claims *Claims `json:"claims,omitempty"`
 }

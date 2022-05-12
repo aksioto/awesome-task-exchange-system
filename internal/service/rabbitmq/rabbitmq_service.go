@@ -1,6 +1,7 @@
 package rabbitmq
 
 import (
+	"encoding/json"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"log"
 )
@@ -43,21 +44,24 @@ func failOnError(err error, msg string) {
 	}
 }
 
-func (s *RabbitmqService) Send(body string) {
-	err := s.channel.Publish(
+func (s *RabbitmqService) Send(e Event) {
+	jsonData, err := json.Marshal(e)
+	if err != nil {
+		log.Println("Failed to marshal message")
+	}
+
+	err = s.channel.Publish(
 		"",           // exchange
 		s.queue.Name, // routing key
 		false,        // mandatory
 		false,        // immediate
 		amqp.Publishing{
 			ContentType: "text/plain",
-			Body:        []byte(body),
+			Body:        jsonData,
 		})
 	failOnError(err, "Failed to publish a message")
-	log.Printf(" [x] Sent %s\n", body)
+	log.Printf(" [x] Sent %s\n", jsonData)
 }
-
-type Receiver func(body []byte)
 
 func (s *RabbitmqService) Receive(callback Receiver) {
 	msgs, err := s.channel.Consume(
@@ -76,7 +80,7 @@ func (s *RabbitmqService) Receive(callback Receiver) {
 	go func() {
 		for d := range msgs {
 			callback(d.Body)
-			log.Printf("Received a message: %s", d.Body)
+			//log.Printf("Received a message: %s", d.Body)
 		}
 	}()
 
