@@ -8,6 +8,7 @@ import (
 	"github.com/aksioto/awesome-task-exchange-system/internal/middleware"
 	"github.com/aksioto/awesome-task-exchange-system/internal/service/rabbitmq"
 	"github.com/gin-gonic/gin"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"log"
 	"net"
@@ -42,27 +43,30 @@ func main() {
 	tasksRepo := repo.NewTasksRepo(db)
 
 	// usecase
-	tasksUsecase := usecase.NewTasksUsecase(tasksRepo, rabbitmqService)
+	tasksUsecase := usecase.NewTasksUsecase(tasksRepo)
 
 	// controller
-	tasksController := controller.NewTasksController(tasksUsecase)
+	tasksController := controller.NewTasksController(tasksUsecase, rabbitmqService)
+
+	// Async
+	go tasksController.StartReceiver()
 
 	r := gin.Default()
-	authorized := r.Group("/")
+	//authorized := r.Group("/")
 
 	// App middleware
-	authorized.Use(middleware.NewAuthMiddleware())
+	r.Use(middleware.NewAuthMiddleware())
 
 	// Routes
-	authorized.POST("/add_new_task", tasksController.HandleAddNewTask)
-	authorized.POST("/shuffle_tasks", tasksController.HandleShuffleTasks)
+	r.POST("/create_new_task", tasksController.HandleCreateNewTask)
+	r.POST("/shuffle_tasks", tasksController.HandleShuffleTasks)
 
 	// For auth testing
-	authorized.GET("/status", tasksController.HandleStatus)
+	r.GET("/status", tasksController.HandleStatus)
 
 	tcpAddr := net.TCPAddr{Port: cfg.Port}
 	log.Println("Server is starting on port:", cfg.Port)
-	if err := http.ListenAndServe(tcpAddr.String(), r); err != nil {
+	if err = http.ListenAndServe(tcpAddr.String(), r); err != nil {
 		log.Fatalf("Failed to listen port: %o.\nError: %s", cfg.Port, err.Error())
 	}
 }

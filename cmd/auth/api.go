@@ -49,10 +49,10 @@ func main() {
 	authRepo := repo.NewAuthRepo(db)
 
 	// usecase
-	authUsecase := usecase.NewAuthUsecase(cfg.ClientSecret, authRepo, rabbitmqService)
+	authUsecase := usecase.NewAuthUsecase(cfg.ClientSecret, authRepo)
 
 	// controller
-	authController := controller.NewAuthController(authUsecase)
+	authController := controller.NewAuthController(authUsecase, rabbitmqService)
 
 	r := gin.Default()
 	//r.Use(middleware.CORSMiddleware())
@@ -63,7 +63,7 @@ func main() {
 
 	tcpAddr := net.TCPAddr{Port: cfg.Port}
 	log.Println("Server is starting on port:", cfg.Port)
-	if err := http.ListenAndServe(tcpAddr.String(), r); err != nil {
+	if err = http.ListenAndServe(tcpAddr.String(), r); err != nil {
 		log.Fatalf("Failed to listen port: %o.\nError: %s", cfg.Port, err.Error())
 	}
 }

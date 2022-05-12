@@ -3,7 +3,6 @@ package usecase
 import (
 	"github.com/aksioto/awesome-task-exchange-system/cmd/auth/repo"
 	"github.com/aksioto/awesome-task-exchange-system/internal/model"
-	"github.com/aksioto/awesome-task-exchange-system/internal/service/rabbitmq"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pkg/errors"
 	"log"
@@ -11,43 +10,40 @@ import (
 )
 
 type AuthUsecase struct {
-	authRepo        *repo.AuthRepo
-	rabbitmqService *rabbitmq.RabbitmqService
-	clientSecret    []byte
+	authRepo     *repo.AuthRepo
+	clientSecret []byte
 }
 
-func NewAuthUsecase(clientSecret string, authRepo *repo.AuthRepo, rabbitmqService *rabbitmq.RabbitmqService) *AuthUsecase {
+func NewAuthUsecase(clientSecret string, authRepo *repo.AuthRepo) *AuthUsecase {
 	return &AuthUsecase{
-		authRepo:        authRepo,
-		rabbitmqService: rabbitmqService,
-		clientSecret:    []byte(clientSecret),
+		authRepo:     authRepo,
+		clientSecret: []byte(clientSecret),
 	}
 }
 
-func (u *AuthUsecase) SignIn(email, pass string) (string, error) {
+func (u *AuthUsecase) SignIn(email, pass string) (string, string, error) {
 	user, err := u.authRepo.GetUser(email, pass)
 	if err != nil {
 		log.Println(err.Error())
-		return "", err
+		return "", "", err
 	}
 
 	token, err := u.generateToken(user)
 	if err != nil {
 		log.Println(err.Error())
-		return "", err
+		return "", "", err
 	}
 
 	if err = u.authRepo.SaveAuthToken(user.PublicID.String(), token); err != nil {
 		log.Println(err.Error())
-		return "", err
+		return "", "", err
 	}
 
-	u.rabbitmqService.Send("")
-	return token, nil
+	return token, user.PublicID.String(), nil
 }
 
 func (u *AuthUsecase) generateToken(user *model.User) (string, error) {
-	expirationTime := time.Now().Add(60 * time.Minute)
+	expirationTime := time.Now().Add(time.Hour)
 
 	claims := &model.Claims{
 		Username: user.Name,
