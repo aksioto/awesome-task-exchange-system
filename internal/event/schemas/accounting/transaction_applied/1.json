@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+
+  "title": "Accouning.PaymentCompleted.v1",
+  "description": "json schema for BE accounting events (version 1)",
+
+  "definitions": {
+    "event_data": {
+      "type": "object",
+      "properties": {
+        "public_user_id": {
+          "type": "string"
+        },
+        "payment_type": {
+          "enum": ["enrollment", "withdrawal"]
+        },
+        "amount": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "public_user_id",
+        "payment_type",
+        "amount"
+      ]
+    }
+  },
+
+  "type": "object",
+
+  "properties": {
+    "event_id":      { "type": "string" },
+    "event_version": { "enum": [1] },
+    "event_name":    { "enum": ["accounting.payment_completed"] },
+    "event_time":    { "type": "string" },
+    "producer":      { "type": "string" },
+
+    "data": { "$ref": "#/definitions/event_data" }
+  },
+
+  "required": [
+    "event_id",
+    "event_version",
+    "event_name",
+    "event_time",
+    "producer",
+    "data"
+  ]
+}

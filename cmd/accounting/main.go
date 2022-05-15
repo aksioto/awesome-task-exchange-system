@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/aksioto/awesome-task-exchange-system/cmd/tasks/controller"
-	"github.com/aksioto/awesome-task-exchange-system/cmd/tasks/repo"
-	"github.com/aksioto/awesome-task-exchange-system/cmd/tasks/usecase"
+	"github.com/aksioto/awesome-task-exchange-system/cmd/accounting/controller"
+	"github.com/aksioto/awesome-task-exchange-system/cmd/accounting/repo"
+	"github.com/aksioto/awesome-task-exchange-system/cmd/accounting/usecase"
 	"github.com/aksioto/awesome-task-exchange-system/internal/helper"
 	"github.com/aksioto/awesome-task-exchange-system/internal/middleware"
 	"github.com/aksioto/awesome-task-exchange-system/internal/service/rabbitmq"
@@ -19,6 +19,7 @@ type Config struct {
 	Port                     int    `env:"PORT,required"`
 	DbConnectionString       string `env:"DB_CONNECTION_STRING,required"`
 	RabbitmqConnectionString string `env:"RABBITMQ_CONNECTION_STRING,required"`
+	RabbitmqQueues           string `env:"RABBITMQ_QUEUES,required"`
 }
 
 func main() {
@@ -38,33 +39,27 @@ func main() {
 	// services
 	rabbitmqService := rabbitmq.NewRabbitmqService(cfg.RabbitmqConnectionString)
 	defer rabbitmqService.Close()
+	//rabbitmqService.DeclareQueue(strings.Split(cfg.RabbitmqQueues, ",")) // need declare everywhere?
 
 	// repo
-	tasksRepo := repo.NewTasksRepo(db)
+	accountingRepo := repo.NewAccountingRepo(db)
 
 	// usecase
-	tasksUsecase := usecase.NewTasksUsecase(tasksRepo)
+	accountingUsecase := usecase.NewAccountingUsecase(accountingRepo)
 
 	// controller
-	tasksController := controller.NewTasksController(tasksUsecase, rabbitmqService)
+	accountingController := controller.NewAccountingController(accountingUsecase, rabbitmqService)
 
 	// Async
-	//go tasksController.StartReceiver()
-	//
-	//or ?
-	//
-	go rabbitmqService.Receive(tasksController.HandleEvents, "user")
+	go rabbitmqService.Receive(accountingController.HandleNewTasks, "new_tasks")
+	go rabbitmqService.Receive(accountingController.HandleShuffledTasks, "shuffled_tasks")
 
 	r := gin.Default()
-	//authorized := r.Group("/")
 	// App middleware
 	r.Use(middleware.NewAuthMiddleware())
-	// Routes
-	r.POST("/create_new_task", tasksController.HandleCreateNewTask)
-	r.POST("/shuffle_tasks", tasksController.HandleShuffleTasks)
 
-	// For auth testing
-	//r.GET("/status", tasksController.HandleStatus)
+	// Routes
+	//r.POST("/create_new_task", accountingController.HandleCreateNewTask)
 
 	tcpAddr := net.TCPAddr{Port: cfg.Port}
 	log.Println("Server is starting on port:", cfg.Port)

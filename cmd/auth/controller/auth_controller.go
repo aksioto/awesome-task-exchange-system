@@ -2,10 +2,12 @@ package controller
 
 import (
 	"github.com/aksioto/awesome-task-exchange-system/cmd/auth/usecase"
+	"github.com/aksioto/awesome-task-exchange-system/internal/event"
 	"github.com/aksioto/awesome-task-exchange-system/internal/service/rabbitmq"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -41,19 +43,6 @@ func (ac *AuthController) HandleSignIn(c *gin.Context) {
 
 	c.SetCookie("token", token, int(time.Hour), "/", "localhost", false, true)
 
-	//TODO: remove event from here. Test
-	e := rabbitmq.Event{
-		EventID:      uuid.New().String(),
-		EventVersion: 1,
-		EventName:    "", //TODO: BEvent
-		EventTime:    time.Now().Unix(),
-		Producer:     "",
-		Data:         nil,
-	}
-
-	//ac.rabbitmqService.ValidateEvent(e, "../../internal/event/schemas/tasks/created/1.json")
-	ac.rabbitmqService.Send(e)
-
 	c.JSON(http.StatusOK, gin.H{
 		"code": http.StatusOK,
 		"msg":  "Successfully signed in",
@@ -79,4 +68,27 @@ func (ac *AuthController) HandleToken(c *gin.Context) {
 		"msg":    "Token is valid",
 		"claims": &claims,
 	})
+}
+
+func (ac *AuthController) HandleSignup(c *gin.Context) {
+	//TODO: signup logic
+
+	e := rabbitmq.Event{
+		ID:       uuid.New().String(),
+		Version:  1,
+		Name:     event.USER_CREATED,
+		Time:     strconv.FormatInt(time.Now().Unix(), 10),
+		Producer: "auth_service",
+		Data: map[string]interface{}{
+			"public_id": "",
+			//todo: other user info
+		},
+	}
+
+	isValid := e.Validate(event.USER_CREATED, 1)
+	if isValid {
+		ac.rabbitmqService.Send(e, "")
+	} else {
+		//TODO: retry or send error log
+	}
 }

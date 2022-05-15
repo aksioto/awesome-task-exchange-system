@@ -2,13 +2,15 @@ package controller
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/aksioto/awesome-task-exchange-system/cmd/tasks/usecase"
-	"github.com/aksioto/awesome-task-exchange-system/internal/model"
+	"github.com/aksioto/awesome-task-exchange-system/internal/event"
 	"github.com/aksioto/awesome-task-exchange-system/internal/service/rabbitmq"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"log"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 type TasksController struct {
@@ -24,64 +26,96 @@ func NewTasksController(tasksUsecase *usecase.TasksUsecase, rabbitmqService *rab
 }
 
 // HTTP
-func (tc *TasksController) HandleCreateNewTask(c *gin.Context) {
-	//tc.tasksUsecase.CreateTask(c.)
-	//TODO: dispatch e = task.added
-	c.JSON(http.StatusOK, gin.H{
+func (c *TasksController) HandleCreateNewTask(context *gin.Context) {
+	//c.tasksUsecase.CreateTask(c.)
+
+	e := rabbitmq.Event{
+		ID:       uuid.New().String(),
+		Version:  1,
+		Name:     event.TASK_CREATED,
+		Time:     strconv.FormatInt(time.Now().Unix(), 10),
+		Producer: "tasks_service",
+		Data: map[string]interface{}{
+			"public_id": "",
+			//todo: other info
+		},
+	}
+
+	isValid := e.Validate(event.TASK_CREATED, 1)
+	if isValid {
+		c.rabbitmqService.Send(e, "new_tasks")
+	} else {
+		//TODO: retry or consume
+	}
+
+	context.JSON(http.StatusOK, gin.H{
 		"code": http.StatusOK,
 		"msg":  "Added new task",
 	})
 }
-func (tc *TasksController) HandleShuffleTasks(c *gin.Context) {
+func (c *TasksController) HandleShuffleTasks(context *gin.Context) {
+	//c.tasksUsecase.ShuffleTasks()
 
-	//tc.tasksUsecase.
-	//TODO: dispatch e = task.shuffled
-
-	c.JSON(http.StatusOK, gin.H{
-		"code": http.StatusOK,
-		"msg":  "All open tasks are shuffled",
-	})
-}
-
-func (tc *TasksController) HandleStatus(c *gin.Context) {
-	data, exists := c.Get("userdata")
-	rm := data.(*model.ResponseMessage)
-
-	if !exists {
-		c.JSON(http.StatusBadRequest, model.ResponseMessage{
-			Msg:  "Userdata not exists",
-			Code: http.StatusBadRequest,
-		})
+	e := rabbitmq.Event{
+		ID:       uuid.New().String(),
+		Version:  1,
+		Name:     event.TASK_CREATED,
+		Time:     strconv.FormatInt(time.Now().Unix(), 10),
+		Producer: "tasks_service",
+		Data: map[string]interface{}{
+			//TODO: shuffled tasks array ?
+		},
 	}
 
-	c.JSON(http.StatusOK, model.ResponseMessage{
-		Msg:  fmt.Sprintf("PublicID: %s | Username: %s", rm.Claims.PublicID, rm.Claims.Username),
-		Code: http.StatusOK,
+	isValid := e.Validate(event.TASK_CREATED, 1)
+	if isValid {
+		c.rabbitmqService.Send(e, "shuffled_tasks")
+	} else {
+		//TODO: retry or consume
+	}
+
+	context.JSON(http.StatusOK, gin.H{
+		"code": http.StatusOK,
+		"msg":  "All open task are shuffled",
 	})
 }
 
-// MQ
-func (tc *TasksController) StartReceiver() {
-	log.Println(" [*] Receiver started")
-	tc.rabbitmqService.Receive(tc.receiveWorker)
-}
+//func (c *TasksController) HandleStatus(context *gin.Context) {
+//	data, exists := context.Get("userdata")
+//	rm := data.(*model.ResponseMessage)
+//
+//	if !exists {
+//		context.JSON(http.StatusBadRequest, model.ResponseMessage{
+//			Msg:  "Userdata not exists",
+//			Code: http.StatusBadRequest,
+//		})
+//	}
+//
+//	context.JSON(http.StatusOK, model.ResponseMessage{
+//		Msg:  fmt.Sprintf("PublicID: %s | Username: %s", rm.Claims.PublicID, rm.Claims.Username),
+//		Code: http.StatusOK,
+//	})
+//}
 
-func (tc *TasksController) receiveWorker(body []byte) {
+// MQ
+func (c *TasksController) HandleEvents(body []byte) {
 	e := &rabbitmq.Event{}
 	err := json.Unmarshal(body, e)
 	if err != nil {
 		log.Println("Failed to unmarshal message")
 	}
-	log.Println(e.EventName)
-	//
-	//switch e.EventName {
-	//case event.USER_SIGNEDIN:
-	//	log.Printf("User signed in! %s", message.Data)
-	//	break
-	//case event.USER_GOT_TOKEN:
-	//	log.Printf("User got token! %s", message.Data)
-	//	break
-	//default:
-	//	break
-	//}
+
+	switch e.Name {
+	case event.USER_CREATED:
+		c.CreateUserWithBalance(e)
+	case event.USER_UPDATED:
+		log.Println("[Updated]", e.ID, e.Name, e.Version)
+	case event.USER_DELETED:
+		log.Println("[Deleted]", e.ID, e.Name, e.Version)
+	}
+}
+
+func (c *TasksController) CreateUserWithBalance(e *rabbitmq.Event) {
+	//TODO: create user with balance
+	log.Println("[Created]", e.ID, e.Name, e.Version)
 }
