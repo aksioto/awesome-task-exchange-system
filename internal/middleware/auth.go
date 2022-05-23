@@ -13,7 +13,7 @@ import (
 )
 
 func NewAuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return func(context *gin.Context) {
 		redirectUrl := fmt.Sprintf("%s%s", c.Request.Host, c.Request.RequestURI)
 		authUrl := fmt.Sprintf("http://localhost:8081/app?redirectUrl=%s", redirectUrl)
 		tokenUrl := "http://127.0.0.1:8081/token"
@@ -53,7 +53,7 @@ func NewAuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-func redirect(c *gin.Context, url string) {
+func redirect(context *gin.Context, url string) {
 	log.Printf("Redirecting to %s", url)
 	c.Redirect(http.StatusFound, url)
 	c.Abort()

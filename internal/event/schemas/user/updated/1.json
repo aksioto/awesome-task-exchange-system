@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
 
-  "title": "Users.Created.v1",
-  "description": "json schema for CUD user events (version 1)",
+  "title": "Users.Updated.v1",
+  "description": "json schema for CUD account events (version 1)",
 
   "definitions": {
     "event_data": {
@@ -14,7 +14,7 @@
         "email": {
           "type": "string"
         },
-        "full_name": {
+        "name": {
           "type": ["string", "null"]
         },
         "position": {
@@ -22,8 +22,7 @@
         }
       },
       "required": [
-        "public_id",
-        "email"
+        "public_id"
       ]
     }
   },
@@ -33,7 +32,7 @@
   "properties": {
     "event_id":      { "type": "string" },
     "event_version": { "enum": [1] },
-    "event_name":    { "enum": ["UserCreated"] },
+    "event_name":    { "enum": ["user.updated"] },
     "event_time":    { "type": "string" },
     "producer":      { "type": "string" },
 
