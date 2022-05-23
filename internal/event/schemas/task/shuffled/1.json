@@ -11,13 +11,13 @@
         "public_task_id": {
           "type": "string"
         },
-        "new_public_user_id": {
+        "public_user_id": {
           "type": "string"
         }
       },
       "required": [
         "public_task_id",
-        "new_public_user_id"
+        "public_user_id"
       ]
     }
   },

@@ -13,12 +13,14 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 )
 
 type Config struct {
 	Port                     int    `env:"PORT,required"`
 	DbConnectionString       string `env:"DB_CONNECTION_STRING,required"`
 	RabbitmqConnectionString string `env:"RABBITMQ_CONNECTION_STRING,required"`
+	RabbitmqQueues           string `env:"RABBITMQ_QUEUES,required"`
 }
 
 func main() {
@@ -38,6 +40,7 @@ func main() {
 	// services
 	rabbitmqService := rabbitmq.NewRabbitmqService(cfg.RabbitmqConnectionString)
 	defer rabbitmqService.Close()
+	rabbitmqService.DeclareExchanges(strings.Split(cfg.RabbitmqQueues, ","))
 
 	// repo
 	tasksRepo := repo.NewTasksRepo(db)
@@ -49,22 +52,21 @@ func main() {
 	tasksController := controller.NewTasksController(tasksUsecase, rabbitmqService)
 
 	// Async
-	//go tasksController.StartReceiver()
-	//
-	//or ?
-	//
-	go rabbitmqService.Receive(tasksController.HandleEvents, "user")
+	go rabbitmqService.Receive(tasksController.HandleUserStream, "user_stream")
 
 	r := gin.Default()
 	//authorized := r.Group("/")
 	// App middleware
 	r.Use(middleware.NewAuthMiddleware())
 	// Routes
-	r.POST("/create_new_task", tasksController.HandleCreateNewTask)
-	r.POST("/shuffle_tasks", tasksController.HandleShuffleTasks)
+	v1 := r.Group("v1")
+	v1.POST("/add_new_task", tasksController.HandleAddNewTask)
+	v1.POST("/shuffle_tasks", tasksController.HandleShuffleTasks)
+	v1.POST("/complete_task", tasksController.HandleCompleteTask)
+	v1.GET("/dashboard", tasksController.HandleDashboard)
 
-	// For auth testing
-	//r.GET("/status", tasksController.HandleStatus)
+	v2 := r.Group("v2")
+	v2.POST("/add_new_task", tasksController.HandleAddNewTask)
 
 	tcpAddr := net.TCPAddr{Port: cfg.Port}
 	log.Println("Server is starting on port:", cfg.Port)

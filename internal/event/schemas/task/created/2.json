@@ -8,7 +8,7 @@
     "event_data": {
       "type": "object",
       "properties": {
-        "public_id": {
+        "public_task_id": {
           "type": "string"
         },
         "title": {
@@ -22,7 +22,7 @@
         }
       },
       "required": [
-        "public_id",
+        "public_task_id",
         "title",
         "jira_id"
       ]

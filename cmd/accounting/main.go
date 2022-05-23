@@ -13,6 +13,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 )
 
 type Config struct {
@@ -39,7 +40,7 @@ func main() {
 	// services
 	rabbitmqService := rabbitmq.NewRabbitmqService(cfg.RabbitmqConnectionString)
 	defer rabbitmqService.Close()
-	//rabbitmqService.DeclareQueue(strings.Split(cfg.RabbitmqQueues, ",")) // need declare everywhere?
+	rabbitmqService.DeclareExchanges(strings.Split(cfg.RabbitmqQueues, ","))
 
 	// repo
 	accountingRepo := repo.NewAccountingRepo(db)
@@ -51,15 +52,19 @@ func main() {
 	accountingController := controller.NewAccountingController(accountingUsecase, rabbitmqService)
 
 	// Async
-	go rabbitmqService.Receive(accountingController.HandleNewTasks, "new_tasks")
-	go rabbitmqService.Receive(accountingController.HandleShuffledTasks, "shuffled_tasks")
+	go rabbitmqService.Receive(accountingController.HandleUserStream, rabbitmq.USER_STREAM)
+	go rabbitmqService.Receive(accountingController.HandleTaskStream, rabbitmq.TASK_STREAM)
+	go rabbitmqService.Receive(accountingController.HandleTaskStatuses, rabbitmq.TASK_STATUSES)
+	go rabbitmqService.Receive(accountingController.HandleTaskAssignment, rabbitmq.TASK_ASSIGNMENT)
 
 	r := gin.Default()
 	// App middleware
 	r.Use(middleware.NewAuthMiddleware())
 
 	// Routes
-	//r.POST("/create_new_task", accountingController.HandleCreateNewTask)
+	r.POST("/close_billing_cycle", accountingController.HandleClosBillingCycle)
+	r.GET("/dashboard", accountingController.HandleAccountingDashboard)
+	//r.GET("/statistics", accountingController.HandleStatisticsDashboard)
 
 	tcpAddr := net.TCPAddr{Port: cfg.Port}
 	log.Println("Server is starting on port:", cfg.Port)

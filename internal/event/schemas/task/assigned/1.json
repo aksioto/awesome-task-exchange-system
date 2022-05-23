@@ -27,7 +27,7 @@
   "properties": {
     "event_id":      { "type": "string" },
     "event_version": { "enum": [1] },
-    "event_name":    { "enum": ["task.new_task_added"] },
+    "event_name":    { "enum": ["task.assigned"] },
     "event_time":    { "type": "string" },
     "producer":      { "type": "string" },
 
