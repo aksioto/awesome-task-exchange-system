@@ -36,7 +36,7 @@ func (c *MQClient) DeclareExchange(exchangeName string) {
 	failOnError(err, "Failed to declare an exchange")
 }
 
-func (c *MQClient) Send(data string, exchangeName string) {
+func (c *MQClient) Send(data []byte, exchangeName string) {
 	err := c.channel.Publish(
 		exchangeName, // exchange
 		"",           // routing key
@@ -44,7 +44,7 @@ func (c *MQClient) Send(data string, exchangeName string) {
 		false,        // immediate
 		amqp.Publishing{
 			ContentType: "text/plain",
-			Body:        []byte(data),
+			Body:        data,
 		})
 	failOnError(err, "Failed to publish a message")
 

@@ -13,19 +13,19 @@ import (
 )
 
 func NewAuthMiddleware() gin.HandlerFunc {
-	return func(context *gin.Context) {
-		redirectUrl := fmt.Sprintf("%s%s", c.Request.Host, c.Request.RequestURI)
+	return func(ctx *gin.Context) {
+		redirectUrl := fmt.Sprintf("%s%s", ctx.Request.Host, ctx.Request.RequestURI)
 		authUrl := fmt.Sprintf("http://localhost:8081/app?redirectUrl=%s", redirectUrl)
 		tokenUrl := "http://127.0.0.1:8081/token"
 
-		cookie, err := c.Cookie("token")
+		cookie, err := ctx.Cookie("token")
 		if err != nil {
 			if err == http.ErrNoCookie {
 				log.Println(err.Error())
-				redirect(c, authUrl)
+				redirect(ctx, authUrl)
 				return
 			}
-			c.JSON(http.StatusBadRequest, gin.H{
+			ctx.JSON(http.StatusBadRequest, gin.H{
 				"msg": "Auth. Bad request." + err.Error(),
 			})
 			return
@@ -37,7 +37,7 @@ func NewAuthMiddleware() gin.HandlerFunc {
 		claims, err := makeRequest(tokenUrl, header)
 		if err != nil {
 			log.Println("token validation failed")
-			redirect(c, authUrl)
+			redirect(ctx, authUrl)
 			return
 		}
 
@@ -48,15 +48,15 @@ func NewAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("userdata", rm)
-		c.Next()
+		ctx.Set("userdata", rm.Claims)
+		ctx.Next()
 	}
 }
 
-func redirect(context *gin.Context, url string) {
+func redirect(ctx *gin.Context, url string) {
 	log.Printf("Redirecting to %s", url)
-	c.Redirect(http.StatusFound, url)
-	c.Abort()
+	ctx.Redirect(http.StatusFound, url)
+	ctx.Abort()
 }
 
 func makeRequest(url string, header http.Header) (string, error) {

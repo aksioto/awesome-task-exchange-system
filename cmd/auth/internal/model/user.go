@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-const UserKey string = "User"
-
 type User struct {
 	Id        int       `json:"id" db:"id"`
 	PublicID  uuid.UUID `json:"public_id" db:"public_id"`

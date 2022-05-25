@@ -1,9 +1,11 @@
 package usecase
 
 import (
+	model2 "github.com/aksioto/awesome-task-exchange-system/cmd/auth/internal/model"
 	"github.com/aksioto/awesome-task-exchange-system/cmd/auth/repo"
 	"github.com/aksioto/awesome-task-exchange-system/internal/model"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 	"log"
 	"time"
@@ -21,32 +23,33 @@ func NewAuthUsecase(clientSecret string, authRepo *repo.AuthRepo) *AuthUsecase {
 	}
 }
 
-func (u *AuthUsecase) SignIn(email, pass string) (string, string, error) {
+func (u *AuthUsecase) SignIn(email, pass string) (string, error) {
 	user, err := u.authRepo.GetUser(email, pass)
 	if err != nil {
 		log.Println(err.Error())
-		return "", "", err
+		return "", err
 	}
 
 	token, err := u.generateToken(user)
 	if err != nil {
 		log.Println(err.Error())
-		return "", "", err
+		return "", err
 	}
 
 	if err = u.authRepo.SaveAuthToken(user.PublicID.String(), token); err != nil {
 		log.Println(err.Error())
-		return "", "", err
+		return "", err
 	}
 
-	return token, user.PublicID.String(), nil
+	return token, nil
 }
 
-func (u *AuthUsecase) generateToken(user *model.User) (string, error) {
+func (u *AuthUsecase) generateToken(user *model2.User) (string, error) {
 	expirationTime := time.Now().Add(time.Hour)
 
 	claims := &model.Claims{
 		Username: user.Name,
+		RoleID:   user.RoleID,
 		PublicID: user.PublicID,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expirationTime.Unix(),
@@ -90,4 +93,17 @@ func (u *AuthUsecase) parseToken(token string) (*model.Claims, error) {
 	}
 
 	return claims, nil
+}
+
+func (u *AuthUsecase) SignUp(email, pass, name string) (*model2.User, error) {
+	user, err := u.authRepo.CreateUser(email, pass, name)
+	if err != nil {
+		log.Println(err)
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			return nil, errors.New(mysqlErr.Message)
+		}
+		return nil, err
+	}
+
+	return user, nil
 }

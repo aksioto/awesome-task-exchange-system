@@ -13,6 +13,7 @@ const (
 
 // BE
 const (
+	TASK_ASSIGNED  = "task.assigned"
 	NEW_TASK_ADDED = "task.new_task_added"
 	TASKS_SHUFFLED = "task.shuffled"
 	TASK_COMPLETED = "task.completed"

@@ -22,6 +22,7 @@ type Config struct {
 	Port                     int    `env:"PORT,required"`
 	DbConnectionString       string `env:"DB_CONNECTION_STRING,required"`
 	RabbitmqConnectionString string `env:"RABBITMQ_CONNECTION_STRING,required"`
+	RabbitmqQueues           string `env:"RABBITMQ_QUEUES,required"`
 	*Credentials
 }
 
@@ -44,6 +45,7 @@ func main() {
 	// services
 	rabbitmqService := rabbitmq.NewRabbitmqService(cfg.RabbitmqConnectionString)
 	defer rabbitmqService.Close()
+	rabbitmqService.DeclareExchange("user_stream")
 
 	// repo
 	authRepo := repo.NewAuthRepo(db)
@@ -55,10 +57,10 @@ func main() {
 	authController := controller.NewAuthController(authUsecase, rabbitmqService)
 
 	r := gin.Default()
-	//r.Use(middleware.CORSMiddleware())
 	r.StaticFS("/app", http.Dir("public"))
 
 	r.POST("/signin", authController.HandleSignIn)
+	r.POST("/signup", authController.HandleSignUp)
 	r.GET("/token", authController.HandleToken)
 
 	tcpAddr := net.TCPAddr{Port: cfg.Port}
